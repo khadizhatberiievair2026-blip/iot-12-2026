@@ -1,7 +1,6 @@
 
 class TimeConverter:
     def __init__(self, hours=0, minutes=0, seconds=0):
-        """Конструктор класу з валідацією вхідних значень часу."""
         self._validate_time(hours, minutes, seconds)
         self.__hours = hours
         self.__minutes = minutes
