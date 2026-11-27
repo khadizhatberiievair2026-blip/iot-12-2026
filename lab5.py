@@ -1,94 +1,118 @@
+"""Time conversion between HH:MM:SS strings and seconds."""
+
+HOURS_PER_DAY = 24
+MINUTES_PER_HOUR = 60
+SECONDS_PER_MINUTE = 60
+SECONDS_PER_HOUR = MINUTES_PER_HOUR * SECONDS_PER_MINUTE
+
 
 class TimeConverter:
-    def __init__(self, hours=0, minutes=0, seconds=0):
+    """Convert time between HH:MM:SS format and total seconds."""
+
+    def __init__(
+        self,
+        hours: int = 0,
+        minutes: int = 0,
+        seconds: int = 0,
+    ) -> None:
+        """Initialize converter with validated time components."""
         self._validate_time(hours, minutes, seconds)
-        self.__hours = hours
-        self.__minutes = minutes
-        self.__seconds = seconds
+        self._hours = hours
+        self._minutes = minutes
+        self._seconds = seconds
+
+    def __del__(self) -> None:
+        """Clean up converter instance on finalization."""
 
     @staticmethod
-    def _validate_time(hours, minutes, seconds):
-        """Перевіряє типи (тільки int, без bool) та допустимі діапазони часу."""
-        for name, value in (("hours", hours), ("minutes", minutes), ("seconds", seconds)):
+    def _validate_time(hours: int, minutes: int, seconds: int) -> None:
+        """Validate integer types (excluding bool) and time bounds."""
+        components = (
+            ("hours", "Години", hours, HOURS_PER_DAY),
+            ("minutes", "Хвилини", minutes, MINUTES_PER_HOUR),
+            ("seconds", "Секунди", seconds, SECONDS_PER_MINUTE),
+        )
+        for name, label, value, upper_bound in components:
             if isinstance(value, bool) or not isinstance(value, int):
-                raise TypeError(f"Параметр '{name}' має бути цілим числом (int).")
+                msg = f"Параметр '{name}' має бути цілим числом (int)."
+                raise TypeError(msg)
+            if not 0 <= value < upper_bound:
+                msg = f"{label} мають бути в діапазоні від 0 до {upper_bound - 1}."
+                raise ValueError(msg)
 
-        if not 0 <= hours < 24:
-            raise ValueError("Години мають бути в діапазоні від 0 до 23.")
-        if not 0 <= minutes < 60:
-            raise ValueError("Хвилини мають бути в діапазоні від 0 до 59.")
-        if not 0 <= seconds < 60:
-            raise ValueError("Секунди мають бути в діапазоні від 0 до 59.")
-            
-    def __del__(self):
-        pass
+    @property
+    def hours(self) -> int:
+        """Hours component (0 to 23)."""
+        return self._hours
 
-    def get_hours (self):
-        return self.__hours
+    @property
+    def minutes(self) -> int:
+        """Minutes component (0 to 59)."""
+        return self._minutes
 
-    def get_inutes(self):
-        return self.__minutes
+    @property
+    def seconds(self) -> int:
+        """Seconds component (0 to 59)."""
+        return self._seconds
 
-    def get_seconds(self):
-        return self.__seconds
-
-
-    def output_converted_time(self, value):
+    def output_converted_time(self, value: int | str) -> str | int:
+        """Convert seconds to HH:MM:SS or HH:MM:SS to seconds."""
         if isinstance(value, bool):
-            raise TypeError("Значення не може бути булевим типом (bool).")
+            msg = "Значення не може бути булевим типом (bool)."
+            raise TypeError(msg)
 
         if isinstance(value, int):
             if value < 0:
-                raise ValueError("Кількість секунд не може бути від'ємною.")
-            hours = (value // 3600) % 24
-            minutes = (value % 3600) // 60
-            seconds = value % 60
+                msg = "Кількість секунд не може бути від'ємною."
+                raise ValueError(msg)
+            total_minutes, seconds = divmod(value, SECONDS_PER_MINUTE)
+            hours, minutes = divmod(total_minutes, MINUTES_PER_HOUR)
+            hours %= HOURS_PER_DAY
             return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-       elif isinstance(value, str):
+        if isinstance(value, str):
             parts = value.split(":")
-            if len(parts) != 3:
-                raise ValueError(f"Invalid time format: '{value}'. Expected 'HH:MM:SS'.")
+            if len(parts) != 3 or not all(
+                part.isascii() and part.isdigit() and len(part) <= 2 for part in parts
+            ):
+                msg = f"Некоректний формат часу: '{value}'. Очікується 'HH:MM:SS'."
+                raise ValueError(msg)
 
-            try:
-                hours, minutes, seconds = map(int, parts)
-            except ValueError as err:
-                raise ValueError(f"Time components must be integers: '{value}'") from err
+            hours, minutes, seconds = map(int, parts)
+            self._validate_time(hours, minutes, seconds)
+            return hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + seconds
 
-            if not (0 <= hours < 24 and 0 <= minutes < 60 and 0 <= seconds < 60):
-                raise ValueError(f"Time values out of range: '{value}'")
+        msg = (
+            "Значення має бути цілим числом (int) або рядком (str), "
+            f"отримано {type(value).__name__}."
+        )
+        raise TypeError(msg)
 
-            result = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    def convertedTime(self, value):
-        if isinstance(value, int):
-            hours = value // 3600
-            minutes = (value % 3600) // 60
-            seconds = value % 60
-            result = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    def __str__(self) -> str:
+        """Return formatted time as 'Час: HH:MM:SS'."""
+        return f"Час: {self._hours:02d}:{self._minutes:02d}:{self._seconds:02d}"
 
-    def __str__(self):
-        return f"Час: {self.__hours:02d}:{self.__minutes:02d}:{self.__seconds:02d}"
 
-def main():
+def main() -> None:
+    """Demonstrate TimeConverter functionality."""
     converter = TimeConverter(2, 30, 45)
 
     print("Початкові дані:")
     print(converter)
 
     time_str = "02:30:45"
-    result1 = converter.outputConvertedTime(time_str)
-    print(f"\n{time_str} = {result1} секунд")
+    converted_seconds = converter.output_converted_time(time_str)
+    print(f"\n{time_str} = {converted_seconds} секунд")
 
     seconds = 9045
-    result2 = converter.outputConvertedTime(seconds)
-    print(f"{seconds} секунд = {result2}")
+    converted_time = converter.output_converted_time(seconds)
+    print(f"{seconds} секунд = {converted_time}")
 
     print("\nОкремі поля:")
-    print("Години:", converter.getHours())
-    print("Хвилини:", converter.getMinutes())
-    print("Секунди:", converter.getSeconds())
+    print("Години:", converter.hours)
+    print("Хвилини:", converter.minutes)
+    print("Секунди:", converter.seconds)
 
 
 if __name__ == "__main__":
     main()
-
